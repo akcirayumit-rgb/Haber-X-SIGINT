@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Mikrofon Test</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #111; color: #0f0; }
+    button { padding: 10px 20px; font-size: 14px; margin: 10px 0; }
+    #output { border: 1px solid #0f0; padding: 10px; margin-top: 20px; height: 300px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    .success { color: #0f0; }
+    .error { color: #f00; }
+  </style>
+</head>
+<body>
+  <h1>🎤 Mikrofon Test</h1>
+  <button onclick="testMicrophone()">1️⃣ Mikrofon İzni Test</button>
+  <button onclick="testAudioContext()">2️⃣ AudioContext Test</button>
+  <button onclick="startListening()">3️⃣ Dinlemeyi Başlat</button>
+  <button onclick="stopListening()">⏹️ Dinlemeyi Durdur</button>
+  <button onclick="clearLog()">🗑️ Temizle</button>
+
+  <div id="output"></div>
+
+  <script>
+    let mediaStream = null;
+    let audioContext = null;
+    let processor = null;
+
+    function log(msg, type = 'info') {
+      const output = document.getElementById('output');
+      const time = new Date().toLocaleTimeString();
+      const span = document.createElement('div');
+      span.className = type === 'error' ? 'error' : (type === 'success' ? 'success' : '');
+      span.textContent = `[${time}] ${msg}`;
+      output.appendChild(span);
+      output.scrollTop = output.scrollHeight;
+      console.log(msg);
+    }
+
+    function clearLog() {
+      document.getElementById('output').innerHTML = '';
+    }
+
+    async function testMicrophone() {
+      log('🔄 getUserMedia test başlanıyor...', 'info');
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        log('✓ Mikrofon başarıyla erişildi!', 'success');
+        log(`  - Tracks: ${stream.getTracks().length}`, 'success');
+        log(`  - Audio track: ${stream.getTracks()[0].label}`, 'success');
+        stream.getTracks().forEach(t => t.stop());
+      } catch (e) {
+        log(`✗ HATA: ${e.name}: ${e.message}`, 'error');
+        if (e.name === 'NotAllowedError') {
+          log('  → System Preferences → Security & Privacy → Microphone → Terminal izni ver', 'error');
+        }
+      }
+    }
+
+    function testAudioContext() {
+      log('🔄 AudioContext test başlanıyor...', 'info');
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        log(`✓ AudioContext oluşturuldu`, 'success');
+        log(`  - Sample Rate: ${ctx.sampleRate} Hz`, 'success');
+        log(`  - State: ${ctx.state}`, 'success');
+      } catch (e) {
+        log(`✗ AudioContext hatası: ${e.message}`, 'error');
+      }
+    }
+
+    async function startListening() {
+      log('🔄 Dinleme başlanıyor...', 'info');
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        log('✓ Mikrofon erişildi', 'success');
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        log('✓ AudioContext oluşturuldu', 'success');
+
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        log('✓ MediaStreamSource oluşturuldu', 'success');
+
+        processor = audioContext.createScriptProcessor(4096, 1, 1);
+        log('✓ ScriptProcessor oluşturuldu', 'success');
+
+        let sampleCount = 0;
+        processor.onaudioprocess = (e) => {
+          const data = e.inputBuffer.getChannelData(0);
+          sampleCount += data.length;
+          if (sampleCount % 16384 === 0) {  // Her ~0.3 saniyede
+            log(`📊 ${sampleCount} sample işlendi`, 'info');
+          }
+        };
+
+        source.connect(processor);
+        processor.connect(audioContext.destination);
+        log('✓ Audio chain bağlandı', 'success');
+        log('🎤 KONUŞ ŞIMDI!', 'success');
+
+      } catch (e) {
+        log(`✗ HATA: ${e.name}: ${e.message}`, 'error');
+      }
+    }
+
+    function stopListening() {
+      log('⏹️ Dinleme duruluyor...', 'info');
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+        log('✓ Mikrofon kapalı', 'success');
+      }
+      if (processor) {
+        processor.disconnect();
+        log('✓ Processor kesildi', 'success');
+      }
+      mediaStream = null;
+      processor = null;
+    }
+
+    // Welcome
+    log('Mikrofon Test Sayfası Açıldı');
+    log('Sırasıyla tıkla: 1️⃣ → 2️⃣ → 3️⃣');
+  </script>
+</body>
+</html>

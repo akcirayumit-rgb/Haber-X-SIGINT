@@ -1,0 +1,21 @@
+# Bağımlılıklar
+node_modules/
+
+# Derlenmiş çıktılar (.dmg, .app — 90MB+, GitHub'a yüklenmez)
+dist/
+
+# Python önbelleği
+__pycache__/
+*.pyc
+
+# Loglar
+*.log
+.server.log
+.server.error.log
+
+# OS
+.DS_Store
+
+# Gizli bilgiler
+.env
+.env.local
